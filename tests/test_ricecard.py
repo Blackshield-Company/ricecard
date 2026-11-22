@@ -204,3 +204,19 @@ def test_grab_without_wayland(monkeypatch):
     monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
     with pytest.raises(rc.RicecardError):
         rc.grab_screenshot()
+
+
+def test_grab_failure_removes_temp_file(monkeypatch, tmp_path):
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    grim = bindir / "grim"
+    grim.write_text("#!/bin/sh\necho 'no outputs' >&2\nexit 1\n")
+    grim.chmod(0o755)
+    tmpdir = tmp_path / "tmp"
+    tmpdir.mkdir()
+    monkeypatch.setenv("PATH", f"{bindir}:/usr/bin:/bin")
+    monkeypatch.setenv("WAYLAND_DISPLAY", "wayland-test")
+    monkeypatch.setattr(rc.tempfile, "tempdir", str(tmpdir))
+    with pytest.raises(rc.RicecardError, match="grim failed"):
+        rc.grab_screenshot()
+    assert list(tmpdir.iterdir()) == []

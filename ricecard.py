@@ -301,9 +301,14 @@ def grab_screenshot(output: str | None = None, delay: float = 0) -> Path:
     fd, tmp = tempfile.mkstemp(prefix="ricecard-grab-", suffix=".png")
     os.close(fd)
     cmd = ["grim"] + (["-o", output] if output else []) + [tmp]
-    r = subprocess.run(cmd, capture_output=True, text=True)
-    if r.returncode != 0:
-        raise RicecardError(f"grim failed: {r.stderr.strip() or r.returncode}")
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True)
+        if r.returncode != 0:
+            raise RicecardError(f"grim failed: {r.stderr.strip() or r.returncode}")
+    except BaseException:
+        # main() only cleans up a grab it got back; don't leave the temp file behind.
+        Path(tmp).unlink(missing_ok=True)
+        raise
     return Path(tmp)
 
 
